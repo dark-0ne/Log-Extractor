@@ -15,7 +15,6 @@ int main(int argc, char *argv[])
     vector < pair <double , double> > right;
     QChar space(' ');
     string s;
-    s.
     QFile file("/home/arminsadreddin/Documents/posLogExtractor/input.txt");
     if(!file.open(QFile::ReadOnly |
                   QFile::Text))
@@ -48,18 +47,19 @@ int main(int argc, char *argv[])
         int index_r[12];
 
 
-        int index_ball_data = current_cycle_log.indexOf("((b)");
+        int index_ball_data = current_cycle_log.indexOf("b");
 
         for(int i=1;i<12;i++){
             QString l(QString::fromStdString("((l "));
-            l.append(i);
+            l.append(QString::number(i));
             l.append(")");
+            cout << l.toStdString() << endl;
             index_l[i] = current_cycle_log.indexOf(l);
         }
 
         for(int i=1;i<12;i++){
             QString r(QString::fromStdString("((r "));
-            r.append(i);
+            r.append(QString::number(i));
             r.append(")");
             index_r[i] = current_cycle_log.indexOf(r);
         }
@@ -69,9 +69,10 @@ int main(int argc, char *argv[])
         QString ball_x;
         QString ball_y;
         int i ;
+        //cout << index_ball_data << endl;
         for(i= index_ball_data ; isSecondSpace == false ; i++){
 
-            if(current_cycle_log.at(i) == space){
+            if(current_cycle_log[i] == QChar(' ')){
                 if(record){
                     isSecondSpace = true;
                     continue;
@@ -80,35 +81,62 @@ int main(int argc, char *argv[])
                 continue;
             }
 
+
             if(record){
                 ball_x.append(current_cycle_log.at(i));
             }
 
+
         }
 
         for(;current_cycle_log.at(i) != space;i++){
-                ball_y.append(current_cycle_log.at(i));
+            ball_y.append(current_cycle_log.at(i));
         }
 
 
         cout << f << " : " << ball_x.toStdString() << " - "<<ball_y.toStdString() << "\n";
 
+        ball.push_back(pair<double,double>(ball_x.toDouble(),ball_y.toDouble()));
+
+        isSecondSpace = false;
+        record = false;
+
+        QString l_x;
+        QString l_y;
+        for(int j=1;j<12;j++){
+            cout << "index_l = " << index_l[j];
+        for(i= index_l[j] ; isSecondSpace == false ; i++){
+
+            if(current_cycle_log[i] == QChar(' ')){
+                if(record){
+                    isSecondSpace = true;
+                    continue;
+                }
+                record = true;
+                continue;
+            }
+
+
+            if(record){
+                l_x.append(current_cycle_log.at(i));
+            }
+
+
+        }
+
+        for(;current_cycle_log.at(i) != space;i++){
+            l_y.append(current_cycle_log.at(i));
+        }
+
+
+
+        }
 
 
     }
 
 
 
-
-
-    //    int j = 13;
-    //    stringstream convert; // stringstream used for the conversion
-    //    convert << j;
-    //    show = show.append(convert.str());
-
-    //    cout << i ;
-    //    //qDebug() << myText;
-
-    //    file.close();
+    file.close();
 
 }
