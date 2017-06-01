@@ -42,6 +42,6 @@ void MainWindow::on_outputButton_clicked()
 
 void MainWindow::on_extractButton_clicked()
 {
-    Extractor extractor(ui->inputText->text(),ui->outputText->text());
+    Extractor extractor(ui->inputText->text(),ui->outputText->text(),ui->playerComboBox->currentIndex(),ui->ballPosCheckBox->isChecked());
     extractor.execute();
 }
