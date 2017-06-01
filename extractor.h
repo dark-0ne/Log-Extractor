@@ -2,6 +2,8 @@
 #define EXTRACTOR_H
 
 #include <QString>
+#include <QThread>
+#include <QProgressBar>
 
 #include <vector>
 
@@ -14,21 +16,45 @@ struct LogOutStructure{
     vector <pair <double,double> > right_pos_vec;
 };
 
-class Extractor
+class Extractor : public QThread
 {
 public:
-    Extractor(QString in, QString out,int current_player,bool extract_ball_pos);
-    bool execute();
+    Extractor();
+    void run() override;
+
+    void setCurrent_player(int current_player);
+
+    void setExtract_ball_pos(bool extract_ball_pos);
+
+    void setProgressBar(QProgressBar *progressBar);
+
+    void setIsCurrentlyExtracting(bool *isCurrentlyExtracting);
+
+    void setInputString(const QString &inputString);
+
+    void setOutputString(const QString &outputString);
+
+signals:
+    static void extracted();
 
 private:
     QString m_inputString;
     QString m_outputString;
+    QProgressBar *m_progressBar;
 
     vector <LogOutStructure> m_log_out_structure;
 
-    vector<pair <double,double> > m_ball_vec;
-    vector<vector <pair <double,double> > > m_left_pos_vec;
-    vector<vector <pair <double,double> > > m_right_pos_vec;
+    int m_num_cycles;
+    int m_last_cycle;
+
+    int m_current_player;
+    bool m_extract_ball_pos;
+
+    bool *m_isCurrentlyExtracting;
+
+    bool write_to_file();
+    int skip_characters(QString input, int current_index, int num_skip_chars);
+    void findLastCycle();
 
     bool extract_ball_pos(QString input);
     bool extract_left_pos(QString input);
@@ -37,13 +63,6 @@ private:
     bool extract_left_pos(QString input,int player_unum);
     bool extract_right_pos(QString input,int player_unum);
 
-    int m_current_player;
-    int m_num_cycles;
-    bool m_extract_ball_pos;
-
-    bool write_to_file();
-
-    int skip_characters(QString input, int current_index, int num_skip_chars);
 
 };
 

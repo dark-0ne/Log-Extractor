@@ -8,29 +8,26 @@
 
 using namespace std;
 
-Extractor::Extractor(QString in, QString out,int current_player,bool extract_ball_pos)
+Extractor::Extractor()
 {
-    m_inputString = in;
-    m_outputString = out;
-    m_current_player = current_player;
-    m_extract_ball_pos = extract_ball_pos;
 }
 
-bool Extractor::execute(){
+void Extractor::run(){
 
     QFile inputFile(m_inputString);
-
+    *m_isCurrentlyExtracting = true;
     if(!inputFile.open(QFile::ReadOnly |
                        QFile::Text))
     {
         qDebug() << " Could not open the file for reading";
-        return false;
+        return;
     }
 
+    findLastCycle();
     QTextStream in(&inputFile);
     QString input = in.readAll();
 
-    for(int current_cycle_count=1;current_cycle_count<5999;current_cycle_count++){
+    for(int current_cycle_count=1;current_cycle_count<m_last_cycle;current_cycle_count++){
         QString show1("show ");
         QString show2 ("show ");
         QString str_start;
@@ -50,7 +47,6 @@ bool Extractor::execute(){
                 current_cycle_count++;
                 continue;
             }
-            else { break; }
         }
         m_num_cycles = current_cycle_count;
         QString current_cycle_log = input.mid(index_start , index_end - index_start);
@@ -69,15 +65,17 @@ bool Extractor::execute(){
         }
         else{
             //for right
-            extract_right_pos(current_cycle_log,m_current_player);
+            extract_right_pos(current_cycle_log,m_current_player-11);
         }
-
+        input = input.mid(index_end);
+        m_progressBar->setValue(100 * current_cycle_count/m_last_cycle);
 
     }
-
+    m_progressBar->setValue(100);
     write_to_file();
 
     inputFile.close();
+    *m_isCurrentlyExtracting = false;
 }
 
 
@@ -112,6 +110,7 @@ bool Extractor::extract_ball_pos(QString input){
 
     m_log_out_structure.push_back(tmp_log);
 
+
     return true;
 }
 
@@ -120,7 +119,7 @@ bool Extractor::extract_left_pos(QString input){
     QString l_x;
     QString l_y;
 
-    LogOutStructure tmp_log;
+    LogOutStructure &tmp_log = m_log_out_structure.back();
     int index_l[11];
 
     for(int i=0;i<11;i++){
@@ -151,15 +150,10 @@ bool Extractor::extract_left_pos(QString input){
         l_y.clear();
 
     }
-
-    tmp_log.cycle = m_num_cycles;
-
-    m_log_out_structure.push_back(tmp_log);
-
 }
 
 bool Extractor::extract_right_pos(QString input){
-    LogOutStructure tmp_log;
+    LogOutStructure &tmp_log = m_log_out_structure.back();
     QString r_x;
     QString r_y;
 
@@ -195,8 +189,6 @@ bool Extractor::extract_right_pos(QString input){
         r_y.clear();
 
     }
-    tmp_log.cycle = m_num_cycles;
-    m_log_out_structure.push_back(tmp_log);
 }
 
 int Extractor::skip_characters(QString input, int current_index, int num_skip_chars){
@@ -217,7 +209,7 @@ bool Extractor::write_to_file(){
     } else {
         for(int counter = 0;counter < m_log_out_structure.size();counter++){
             QTextStream stream(&outputFile);
-
+            m_progressBar->setValue(100 * counter/m_log_out_structure.size());
             stream << "Cycle " << m_log_out_structure.at(counter).cycle <<endl;
 
             if(m_extract_ball_pos)
@@ -251,6 +243,7 @@ bool Extractor::write_to_file(){
             stream.flush();
         }
     }
+    m_progressBar->setValue(100);
     outputFile.close();
 }
 
@@ -289,41 +282,106 @@ bool Extractor::extract_left_pos(QString input,int player_unum){
 }
 
 bool Extractor::extract_right_pos(QString input,int player_unum){
-    vector <pair <double,double> > right;
+    LogOutStructure tmp_log;
     QString r_x;
     QString r_y;
 
-    int index_r[11];
+    int index_r;
+    QString r(QString::fromStdString("(r "));
+    r.append(QString::number(player_unum));
+    r.append(")");
+    index_r = input.indexOf(r);
 
-    for(int i=0;i<11;i++){
-        QString r(QString::fromStdString("r "));
-        r.append(QString::number(i+1));
-        index_r[i] = input.indexOf(r);
+    int i =skip_characters(input,index_r,4);
+    for(i;not input.at(i).isSpace() ; i++)
+    {
+        r_x.append(input.at(i));
     }
 
-    for(int j=0;j<11;j++){
-        int i =skip_characters(input,index_r[j],4);
+    for(++i;not input.at(i).isSpace() ; i++)
+    {
+        r_y.append(input.at(i));
+    }
+    pair <double,double> tmp;
 
-        for(i;not input.at(i).isSpace() ; i++)
-        {
-            r_x.append(input.at(i));
-        }
+    tmp.first = r_x.toDouble();
+    tmp.second = r_y.toDouble();
+    tmp_log.right_pos_vec.push_back(tmp);
+    r_x.clear();
+    r_y.clear();
 
-        for(++i;not input.at(i).isSpace() ; i++)
-        {
-            r_y.append(input.at(i));
-        }
+    tmp_log.cycle = m_num_cycles;
 
+    m_log_out_structure.push_back(tmp_log);
+}
 
-        pair <double , double> temp;
+void Extractor::setExtract_ball_pos(bool extract_ball_pos)
+{
+    m_extract_ball_pos = extract_ball_pos;
+}
 
-        temp.first = r_x.toDouble();
-        temp.second = r_y.toDouble();
-        right.push_back(temp);
-        r_x.clear();
-        r_y.clear();
+void Extractor::setProgressBar(QProgressBar *progressBar)
+{
+    m_progressBar = progressBar;
+}
 
+void Extractor::setIsCurrentlyExtracting(bool *isCurrentlyExtracting)
+{
+    m_isCurrentlyExtracting = isCurrentlyExtracting;
+}
+
+void Extractor::setInputString(const QString &inputString)
+{
+    m_inputString = inputString;
+}
+
+void Extractor::setOutputString(const QString &outputString)
+{
+    m_outputString = outputString;
+}
+
+void Extractor::setCurrent_player(int current_player)
+{
+    m_current_player = current_player;
+}
+
+void Extractor::findLastCycle()
+{
+    QFile inputFile(m_inputString);
+    if(!inputFile.open(QFile::ReadOnly |
+                       QFile::Text))
+    {
+        qDebug() << " Could not open the file for reading";
+        return;
     }
 
-    m_right_pos_vec.push_back(right);
+    QTextStream in(&inputFile);
+    QString input = in.readAll();
+    bool flag = true;
+    int current_cycle = 3001;
+    while(flag)
+    {
+        QString show1("show ");
+        QString show2("show ");
+
+        show1.append(QString::number(current_cycle));
+        show2.append(QString::number(current_cycle)+1);
+
+        int index_start = input.indexOf(show1 , 0);
+        int index_next = input.indexOf(show2 , 0);
+        if(index_start != -1 && index_next == -1)
+        {
+            flag = false;
+            break;
+        }
+        if(index_start == -1)
+            current_cycle = current_cycle/2;
+        else
+        {
+            current_cycle += current_cycle/2;
+        }
+    }
+
+
+    m_last_cycle = current_cycle;
 }

@@ -5,13 +5,16 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
-#include "extractor.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    m_isCurrentlyExtracting = false;
+    m_extractor = new Extractor();
+    m_extractor->setIsCurrentlyExtracting(&m_isCurrentlyExtracting);
+
 }
 
 MainWindow::~MainWindow()
@@ -42,6 +45,28 @@ void MainWindow::on_outputButton_clicked()
 
 void MainWindow::on_extractButton_clicked()
 {
-    Extractor extractor(ui->inputText->text(),ui->outputText->text(),ui->playerComboBox->currentIndex(),ui->ballPosCheckBox->isChecked());
-    extractor.execute();
+    if(m_isCurrentlyExtracting)
+    {
+        QMessageBox msgBox(this);
+        msgBox.setText("Currently Extracting!");
+
+        msgBox.exec();
+        return;
+    }
+    else{
+        m_extractor->setCurrent_player(ui->playerComboBox->currentIndex());
+        m_extractor->setExtract_ball_pos(ui->ballPosCheckBox->isChecked());
+        m_extractor->setProgressBar(ui->progressBar);
+        m_extractor->setInputString(ui->inputText->text());
+        m_extractor->setOutputString(ui->outputText->text());
+
+//        connect(m_extractor,&Extractor::finished,m_extractor,&QObject::deleteLater);
+
+        m_extractor->start();
+    }
+}
+
+void MainWindow::extractFinished()
+{
+    m_isCurrentlyExtracting = false;
 }

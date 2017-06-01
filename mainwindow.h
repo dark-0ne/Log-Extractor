@@ -3,12 +3,16 @@
 
 #include <QMainWindow>
 
+#include "extractor.h"
+
 namespace Ui {
 class MainWindow;
 }
 
 class MainWindow : public QMainWindow
 {
+
+    friend class Extractor;
     Q_OBJECT
 
 public:
@@ -22,8 +26,14 @@ private slots:
 
     void on_extractButton_clicked();
 
+    void extractFinished();
+
 private:
     Ui::MainWindow *ui;
+
+    bool m_isCurrentlyExtracting;
+
+    Extractor *m_extractor;
 
 };
 
