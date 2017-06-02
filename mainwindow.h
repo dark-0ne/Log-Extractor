@@ -26,12 +26,8 @@ private slots:
 
     void on_extractButton_clicked();
 
-    void extractFinished();
-
 private:
     Ui::MainWindow *ui;
-
-    bool m_isCurrentlyExtracting;
 
     Extractor *m_extractor;
 

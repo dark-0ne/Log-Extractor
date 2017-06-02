@@ -29,7 +29,7 @@
      </font>
     </property>
     <property name="text">
-     <string>Input:</string>
+     <string>Log:</string>
     </property>
    </widget>
    <widget class="QLabel" name="outputLabel">

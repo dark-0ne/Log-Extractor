@@ -28,8 +28,6 @@ public:
 
     void setProgressBar(QProgressBar *progressBar);
 
-    void setIsCurrentlyExtracting(bool *isCurrentlyExtracting);
-
     void setInputString(const QString &inputString);
 
     void setOutputString(const QString &outputString);
@@ -49,8 +47,6 @@ private:
 
     int m_current_player;
     bool m_extract_ball_pos;
-
-    bool *m_isCurrentlyExtracting;
 
     bool write_to_file();
     int skip_characters(QString input, int current_index, int num_skip_chars);

@@ -11,9 +11,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    m_isCurrentlyExtracting = false;
     m_extractor = new Extractor();
-    m_extractor->setIsCurrentlyExtracting(&m_isCurrentlyExtracting);
 
 }
 
@@ -45,11 +43,18 @@ void MainWindow::on_outputButton_clicked()
 
 void MainWindow::on_extractButton_clicked()
 {
-    if(m_isCurrentlyExtracting)
+    if(ui->inputText->text().isEmpty())
+    {
+        QMessageBox msgBox;
+        msgBox.setText("Please enter log path!");
+        msgBox.exec();
+        return;
+    }
+
+    else if(ui->progressBar->value() != 0 && ui->progressBar->value() != 100)
     {
         QMessageBox msgBox(this);
-        msgBox.setText("Currently Extracting!");
-
+        msgBox.setText("Please wait we are currently extracting!");
         msgBox.exec();
         return;
     }
@@ -60,13 +65,6 @@ void MainWindow::on_extractButton_clicked()
         m_extractor->setInputString(ui->inputText->text());
         m_extractor->setOutputString(ui->outputText->text());
 
-//        connect(m_extractor,&Extractor::finished,m_extractor,&QObject::deleteLater);
-
         m_extractor->start();
     }
-}
-
-void MainWindow::extractFinished()
-{
-    m_isCurrentlyExtracting = false;
 }

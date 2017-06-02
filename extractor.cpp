@@ -2,6 +2,7 @@
 
 #include <QFile>
 #include <QDebug>
+#include <QMessageBox>
 
 #include <iostream>
 #include <vector>
@@ -15,7 +16,6 @@ Extractor::Extractor()
 void Extractor::run(){
 
     QFile inputFile(m_inputString);
-    *m_isCurrentlyExtracting = true;
     if(!inputFile.open(QFile::ReadOnly |
                        QFile::Text))
     {
@@ -27,7 +27,7 @@ void Extractor::run(){
     QTextStream in(&inputFile);
     QString input = in.readAll();
 
-    for(int current_cycle_count=1;current_cycle_count<m_last_cycle;current_cycle_count++){
+    for(int current_cycle_count=1;current_cycle_count<6000;current_cycle_count++){
         QString show1("show ");
         QString show2 ("show ");
         QString str_start;
@@ -40,12 +40,21 @@ void Extractor::run(){
         int index_start = input.indexOf(show1 , 0);
         int index_end = input.indexOf(show2, 0);
 
+        if(index_start == -1 && current_cycle_count == 3000)
+            continue;
+        if(index_start == -1 && index_end == -1)
+            break;
         if(index_end == -1)
         {
             if(current_cycle_count ==2999)
             {
-                current_cycle_count++;
-                continue;
+                show2 = "show 3001";
+                index_end = input.indexOf(show2);
+            }
+            else if(current_cycle_count == 5999)
+            {
+                show2 = "msg 6000";
+                index_end = input.indexOf(show2);
             }
         }
         m_num_cycles = current_cycle_count;
@@ -71,11 +80,9 @@ void Extractor::run(){
         m_progressBar->setValue(100 * current_cycle_count/m_last_cycle);
 
     }
-    m_progressBar->setValue(100);
-    write_to_file();
-
     inputFile.close();
-    *m_isCurrentlyExtracting = false;
+    write_to_file();
+    m_progressBar->setValue(100);
 }
 
 
@@ -204,46 +211,49 @@ bool Extractor::write_to_file(){
     QFile outputFile(m_outputString);
 
     if (!outputFile.open(QIODevice::WriteOnly)) {
-        //TODO: exception handling
+        QMessageBox msgBox;
+        msgBox.setText("Can not write to file!");
+        msgBox.exec();
         return false;
     } else {
-        for(int counter = 0;counter < m_log_out_structure.size();counter++){
+
+        vector<LogOutStructure>::iterator logIt;
+        for(logIt = m_log_out_structure.begin() ;logIt != m_log_out_structure.end();logIt++){
             QTextStream stream(&outputFile);
-            m_progressBar->setValue(100 * counter/m_log_out_structure.size());
-            stream << "Cycle " << m_log_out_structure.at(counter).cycle <<endl;
+            stream << "Cycle " << logIt.operator *().cycle <<endl;
 
             if(m_extract_ball_pos)
-                stream << "ball_pos " << m_log_out_structure.at(counter).ball_vec.first << " " <<m_log_out_structure.at(counter).ball_vec.second << endl;
+                stream << "ball_pos " << logIt.operator *().ball_vec.first << " " <<logIt.operator *().ball_vec.second << endl;
 
             if(m_current_player == 0)
             {
-                for(int player_counter = 0; player_counter < m_log_out_structure.at(counter).left_pos_vec.size();player_counter++)
+                vector<pair<double,double> >::iterator playerIt;
+                int player_counter = 1;
+                for(playerIt = logIt.operator *().left_pos_vec.begin(); playerIt != logIt.operator *().left_pos_vec.end();playerIt++)
                 {
-                    stream << "left_pos_" << player_counter+1 << " " << m_log_out_structure.at(counter).left_pos_vec.at(player_counter).first
-                           << " " <<m_log_out_structure.at(counter).left_pos_vec.at(player_counter).second << endl;
+                    stream << "left_pos_" << player_counter++ << " " << playerIt.operator *().first << " " <<playerIt.operator *().second << endl;
                 }
-                for(int player_counter = 0; player_counter < m_log_out_structure.at(counter).right_pos_vec.size();player_counter++)
+                player_counter = 1;
+                for(playerIt = logIt.operator *().right_pos_vec.begin(); playerIt != logIt.operator *().right_pos_vec.end();playerIt++)
                 {
-                    stream << "right_pos_" << player_counter+1 << " " << m_log_out_structure.at(counter).right_pos_vec.at(player_counter).first
-                           << " " <<m_log_out_structure.at(counter).right_pos_vec.at(player_counter).second << endl;
+                    stream << "right_pos_" << player_counter++ << " " << playerIt.operator *().first << " " <<playerIt.operator *().second << endl;
                 }
 
             }
             else if(m_current_player < 12)
             {
-                stream << "left_pos_" << m_current_player << " " << m_log_out_structure.at(counter).left_pos_vec.at(0).first
-                       << " " <<m_log_out_structure.at(counter).left_pos_vec.at(0).second << endl;
+                stream << "left_pos_" << m_current_player << " " << logIt.operator *().left_pos_vec.at(0).first
+                       << " " <<logIt.operator *().left_pos_vec.at(0).second << endl;
             }
             else
             {
-                stream << "right_pos_" << m_current_player << " " << m_log_out_structure.at(counter).right_pos_vec.at(0).first
-                       << " " <<m_log_out_structure.at(counter).right_pos_vec.at(0).second << endl;
+                stream << "right_pos_" << m_current_player << " " << logIt.operator *().right_pos_vec.at(0).first
+                       << " " <<logIt.operator *().right_pos_vec.at(0).second << endl;
             }
 
             stream.flush();
         }
     }
-    m_progressBar->setValue(100);
     outputFile.close();
 }
 
@@ -325,11 +335,6 @@ void Extractor::setProgressBar(QProgressBar *progressBar)
     m_progressBar = progressBar;
 }
 
-void Extractor::setIsCurrentlyExtracting(bool *isCurrentlyExtracting)
-{
-    m_isCurrentlyExtracting = isCurrentlyExtracting;
-}
-
 void Extractor::setInputString(const QString &inputString)
 {
     m_inputString = inputString;
@@ -351,35 +356,37 @@ void Extractor::findLastCycle()
     if(!inputFile.open(QFile::ReadOnly |
                        QFile::Text))
     {
-        qDebug() << " Could not open the file for reading";
+        qDebug() << " Could not open the file for reading!";
         return;
     }
 
     QTextStream in(&inputFile);
     QString input = in.readAll();
-    bool flag = true;
     int current_cycle = 3001;
-    while(flag)
+    int counter = 6001;
+    while(counter>0)
     {
         QString show1("show ");
         QString show2("show ");
 
         show1.append(QString::number(current_cycle));
-        show2.append(QString::number(current_cycle)+1);
+        show2.append(QString::number(current_cycle+1));
 
         int index_start = input.indexOf(show1 , 0);
         int index_next = input.indexOf(show2 , 0);
         if(index_start != -1 && index_next == -1)
         {
-            flag = false;
             break;
         }
         if(index_start == -1)
-            current_cycle = current_cycle/2;
+            current_cycle = current_cycle % 2==0?current_cycle/2:(current_cycle+1)/2;
         else
         {
-            current_cycle += current_cycle/2;
+            int next = 6000 - current_cycle;
+            current_cycle += next % 2==0?next/2:(next+1)/2;
         }
+
+        counter--;
     }
 
 
