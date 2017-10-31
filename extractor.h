@@ -9,7 +9,7 @@
 
 using namespace std;
 
-struct LogOutStructure{
+struct LogOutStructure {
     int cycle;
     pair <double,double> ball_vec;
     vector <pair <double,double> > left_pos_vec;
