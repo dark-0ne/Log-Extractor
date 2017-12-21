@@ -10,14 +10,16 @@
 
 using namespace std;
 
-Extractor::Extractor()
-{
+Extractor::Extractor(QWidget *parent) {
 }
 
-void Extractor::run()
-{
+Extractor::~Extractor() {
 
-    QFile inputFile(m_inputString);
+}
+
+void Extractor::run() {
+
+    QFile inputFile(inputString);
 
     if (!inputFile.open(QFile::ReadOnly |
                         QFile::Text)) {
@@ -29,9 +31,12 @@ void Extractor::run()
     QTextStream in(&inputFile);
     QString input = in.readAll();
 
-    for (int current_cycle_count = 1; current_cycle_count < 6000; current_cycle_count++) {
+    for (int current_cycle_count = 1; current_cycle_count <= last_cycle; current_cycle_count++) {
+
+        cout << "Starting cycle " << current_cycle_count << endl;
+
         QString show1("show ");
-        QString show2 ("show ");
+        QString show2("show ");
         QString str_start;
         QString str_end;
         str_start.setNum(current_cycle_count);
@@ -60,232 +65,195 @@ void Extractor::run()
             }
         }
 
-        m_num_cycles = current_cycle_count;
         QString current_cycle_log = input.mid(index_start, index_end - index_start);
 
-        if (m_extract_ball_pos) {
-            extract_ball_pos(current_cycle_log);
+        log_out_structure.push_back(LogOutStructure());
+
+        log_out_structure.back().cycle = current_cycle_count;
+
+        if (extr_ball) {
+            extract_ball(&current_cycle_log);
         }
 
-        if (m_current_player == 0) {
-            extract_left_pos(current_cycle_log);
-            extract_right_pos(current_cycle_log);
-        } else if (m_current_player < 12) {
-            // for left
-            extract_left_pos(current_cycle_log, m_current_player);
-        } else {
-            //for right
-            extract_right_pos(current_cycle_log, m_current_player - 11);
-        }
+        extract_left(&current_cycle_log);
+        extract_right(&current_cycle_log);
 
         input = input.mid(index_end);
-        m_progressBar->setValue(100 * current_cycle_count / m_last_cycle);
+        emit signal_progress_bar(100 * current_cycle_count / last_cycle);
 
     }
 
     inputFile.close();
     write_to_file();
-    m_progressBar->setValue(100);
+    emit signal_progress_bar(100);
+
 }
 
 
-bool Extractor::extract_ball_pos(QString input)
-{
+void Extractor::extract_ball(QString *input) {
 
-    int index_ball_data = input.indexOf("b");
+    int index_ball_data = input->indexOf("b");
 
-    QString ball_x;
-    QString ball_y;
+    QString pos_x;
+    QString pos_y;
+
+    QString vel_x;
+    QString vel_y;
 
     int i = skip_characters(input, index_ball_data, 1);
 
-    for (i ; not input.at(i).isSpace() ; i++) {
-        ball_x.append(input.at(i));
+    for (i ; not input->at(i).isSpace() ; i++) {
+        pos_x.append(input->at(i));
     }
 
-    i++;
-
-    for (i; not input.at(i).isSpace(); i++) {
-        ball_y.append(input.at(i));
+    for (++i; not input->at(i).isSpace(); i++) {
+        pos_y.append(input->at(i));
     }
 
-    pair<double, double> temp;
 
-    temp.first = ball_x.toDouble();
-    temp.second = ball_y.toDouble();
+    for (++i; not input->at(i).isSpace(); i++) {
+        vel_x.append(input->at(i));
+    }
 
-    LogOutStructure tmp_log;
+    for (++i; not input->at(i).isSpace(); i++) {
+        vel_y.append(input->at(i));
+    }
 
-    tmp_log.cycle = m_num_cycles;
-    tmp_log.ball_vec = temp;
+    LogOutStructure *tmp_log = &log_out_structure.back();
 
-    m_log_out_structure.push_back(tmp_log);
-
-
-    return true;
+    tmp_log->ball.setPos(Vector2D(pos_x.toDouble(),pos_y.toDouble()));
+    tmp_log->ball.setVel(Vector2D(vel_x.toDouble(),vel_y.toDouble()));
 }
 
 
-bool Extractor::extract_left_pos(QString input)
-{
-    QString l_x;
-    QString l_y;
+void Extractor::extract_left(QString *input) {
 
-    LogOutStructure& tmp_log = m_log_out_structure.back();
-    int index_l[11];
-
-    for (int i = 0; i < 11; i++) {
-        QString l(QString::fromStdString("(l "));
-        l.append(QString::number(i + 1));
-        index_l[i] = input.indexOf(l);
-        l.append(")");
-    }
-
-    for (int j = 0; j < 11; j++) {
-        int i = skip_characters(input, index_l[j], 4);
-
-        for (i; not input.at(i).isSpace() ; i++) {
-            l_x.append(input.at(i));
+    for (int i = 1; i <= 11; i++) {
+        if (player_to_extract[i]) {
+            extract_left(input,i);
         }
-
-        for (++i; not input.at(i).isSpace() ; i++) {
-            l_y.append(input.at(i));
-        }
-
-        pair <double, double> temp;
-
-        temp.first = l_x.toDouble();
-        temp.second = l_y.toDouble();
-        tmp_log.left_pos_vec.push_back(temp);
-        l_x.clear();
-        l_y.clear();
-
     }
 }
 
-bool Extractor::extract_right_pos(QString input)
-{
-    LogOutStructure& tmp_log = m_log_out_structure.back();
-    QString r_x;
-    QString r_y;
-
-    int index_r[11];
-
-    for (int i = 0; i < 11; i++) {
-        QString r(QString::fromStdString("(r "));
-        r.append(QString::number(i + 1));
-        index_r[i] = input.indexOf(r);
-        r.append(")");
-    }
-
-    for (int j = 0; j < 11; j++) {
-        int i = skip_characters(input, index_r[j], 4);
-
-        for (i; not input.at(i).isSpace() ; i++) {
-            r_x.append(input.at(i));
+void Extractor::extract_right(QString *input) {
+    for (int i = 1; i <= 11; i++) {
+        if (player_to_extract[i+11]) {
+            extract_right(input,i);
         }
-
-        for (++i; not input.at(i).isSpace() ; i++) {
-            r_y.append(input.at(i));
-        }
-
-
-        pair <double, double> temp;
-
-        temp.first = r_x.toDouble();
-        temp.second = r_y.toDouble();
-        tmp_log.right_pos_vec.push_back(temp);
-        r_x.clear();
-        r_y.clear();
-
     }
 }
 
-int Extractor::skip_characters(QString input, int current_index, int num_skip_chars)
-{
+int Extractor::skip_characters(QString *input, int current_index, int num_skip_chars) {
     int i;
 
     for (i = current_index; num_skip_chars > 0 ; i++)
-        if (input.at(i).isSpace()) {
+        if (input->at(i).isSpace()) {
             num_skip_chars--;
         }
 
     return i;
 }
 
-bool Extractor::write_to_file()
-{
+void Extractor::write_to_file() {
 
-    QFile outputFile(m_outputString);
+    QFile outputFile(outputString);
 
     if (!outputFile.open(QIODevice::WriteOnly)) {
         QMessageBox msgBox;
         msgBox.setText("Can not write to file!");
         msgBox.exec();
-        return false;
+        return;
     } else {
 
         QXmlStreamWriter xmlWriter(&outputFile);
         xmlWriter.setAutoFormatting(true);
         xmlWriter.writeStartDocument();
 
-        auto cycle_it = m_log_out_structure.begin();
+        auto cycle_it = log_out_structure.begin();
 
-        int current_cycle = 0;
-
-        for (; cycle_it != m_log_out_structure.end(); cycle_it++) {
+        xmlWriter.writeStartElement("Data");
+        for (; cycle_it != log_out_structure.end(); cycle_it++) {
 
             xmlWriter.writeStartElement("Cycle");
-            xmlWriter.writeAttribute("number", QString::number(current_cycle));
+            xmlWriter.writeAttribute("number", QString::number(cycle_it->cycle));
 
             //write ball pos
-            xmlWriter.writeStartElement("Ball");
+            if (extr_ball) {
+                xmlWriter.writeStartElement("Ball");
 
-            xmlWriter.writeTextElement("PositionX", QString::number(cycle_it->ball_vec.first, 'f', 4));
-            xmlWriter.writeTextElement("PositionY", QString::number(cycle_it->ball_vec.second, 'f', 4));
+                if (extract_pos) {
+                    xmlWriter.writeAttribute("PosX", QString::number(cycle_it->ball.getPos().x, 'f', 4));
+                    xmlWriter.writeAttribute("PosY", QString::number(cycle_it->ball.getPos().y, 'f', 4));
+                }
 
-            xmlWriter.writeEndElement();
+                if (extract_vel) {
+                    xmlWriter.writeAttribute("VelX", QString::number(cycle_it->ball.getVel().x, 'f', 4));
+                    xmlWriter.writeAttribute("VelY", QString::number(cycle_it->ball.getVel().y, 'f', 4));
+                }
+
+                xmlWriter.writeEndElement();
+            }
             //write left players
-            auto player_it = cycle_it->left_pos_vec.begin();
-            int player_count = 0;
+            auto player_it = cycle_it->left.begin();
 
-            for (; player_it != cycle_it->left_pos_vec.end(); player_it++) {
+            for (; player_it != cycle_it->left.end(); player_it++) {
 
                 xmlWriter.writeStartElement("Player");
                 xmlWriter.writeAttribute("Side", "Left");
-                xmlWriter.writeAttribute("Unum", QString::number(player_count + 1));
+                xmlWriter.writeAttribute("Unum", QString::number(player_it->getUnum()));
+                if (extract_pos) {
+                    xmlWriter.writeAttribute("PosX", QString::number(player_it->getPos().x, 'f', 4));
+                    xmlWriter.writeAttribute("PosY", QString::number(player_it->getPos().y, 'f', 4));
+                }
 
-                xmlWriter.writeTextElement("PositionX", QString::number(player_it->first, 'f', 4));
-                xmlWriter.writeTextElement("PositionY", QString::number(player_it->second, 'f', 4));
+                if (extract_vel) {
+                    xmlWriter.writeAttribute("VelX", QString::number(player_it->getVel().x, 'f', 4));
+                    xmlWriter.writeAttribute("VelY", QString::number(player_it->getVel().y, 'f', 4));
+                }
 
+                if (extract_stamina) {
+                    xmlWriter.writeAttribute("Stamina", QString::number(player_it->getStamina(),'f',4));
+                }
+
+                if (extract_angles) {
+                    xmlWriter.writeAttribute("BodyAngle", QString::number(player_it->getBody_angle(), 'f', 4));
+                    xmlWriter.writeAttribute("HeadAngle", QString::number(player_it->getHead_angle(), 'f', 4));
+                }
                 xmlWriter.writeEndElement();
-
-                player_count++;
 
             }
 
-            //write right players
+            player_it = cycle_it->right.begin();
 
-            player_it = cycle_it->right_pos_vec.begin();
-            player_count = 0;
-
-            for (; player_it != cycle_it->right_pos_vec.end(); player_it++) {
+            for (; player_it != cycle_it->right.end(); player_it++) {
 
                 xmlWriter.writeStartElement("Player");
                 xmlWriter.writeAttribute("Side", "Right");
-                xmlWriter.writeAttribute("Unum", QString::number(player_count + 1));
+                xmlWriter.writeAttribute("Unum", QString::number(player_it->getUnum()));
+                if (extract_pos) {
+                    xmlWriter.writeAttribute("PosX", QString::number(player_it->getPos().x, 'f', 4));
+                    xmlWriter.writeAttribute("PosY", QString::number(player_it->getPos().y, 'f', 4));
+                }
 
-                xmlWriter.writeTextElement("PositionX", QString::number(player_it->first, 'f', 4));
-                xmlWriter.writeTextElement("PositionY", QString::number(player_it->second, 'f', 4));
+                if (extract_vel) {
+                    xmlWriter.writeAttribute("VelX", QString::number(player_it->getVel().x, 'f', 4));
+                    xmlWriter.writeAttribute("VelY", QString::number(player_it->getVel().y, 'f', 4));
+                }
 
+                if (extract_stamina) {
+                    xmlWriter.writeAttribute("Stamina", QString::number(player_it->getStamina(),'f',4));
+                }
+
+                if (extract_angles) {
+                    xmlWriter.writeAttribute("BodyAngle", QString::number(player_it->getBody_angle(), 'f', 4));
+                    xmlWriter.writeAttribute("HeadAngle", QString::number(player_it->getHead_angle(), 'f', 4));
+                }
                 xmlWriter.writeEndElement();
 
             }
-
-            current_cycle++;
             xmlWriter.writeEndElement();
         }
-
+        xmlWriter.writeEndElement();
         xmlWriter.writeEndDocument();
 
     }
@@ -293,104 +261,170 @@ bool Extractor::write_to_file()
     outputFile.close();
 }
 
-bool Extractor::extract_left_pos(QString input, int player_unum)
-{
-    LogOutStructure tmp_log;
-    QString l_x;
-    QString l_y;
+void Extractor::extract_left(QString *input, int player_unum) {
+    LogOutStructure *tmp_log = &log_out_structure.back();
+
+    QString pos_x;
+    QString pos_y;
+
+    QString vel_x;
+    QString vel_y;
+
+    QString body_angle;
+    QString head_angle;
+
+    QString stamina;
 
     int index_l;
     QString l(QString::fromStdString("(l "));
     l.append(QString::number(player_unum));
     l.append(")");
-    index_l = input.indexOf(l);
+    index_l = input->indexOf(l);
 
     int i = skip_characters(input, index_l, 4);
 
-    for (i; not input.at(i).isSpace() ; i++) {
-        l_x.append(input.at(i));
+    for (i; not input->at(i).isSpace() ; i++) {
+        pos_x.append(input->at(i));
     }
 
-    for (++i; not input.at(i).isSpace() ; i++) {
-        l_y.append(input.at(i));
+    for (++i; not input->at(i).isSpace() ; i++) {
+        pos_y.append(input->at(i));
     }
 
-    pair <double, double> tmp;
+    for (++i; not input->at(i).isSpace() ; i++) {
+        vel_x.append(input->at(i));
+    }
 
-    tmp.first = l_x.toDouble();
-    tmp.second = l_y.toDouble();
-    tmp_log.left_pos_vec.push_back(tmp);
-    l_x.clear();
-    l_y.clear();
+    for (++i; not input->at(i).isSpace() ; i++) {
+        vel_y.append(input->at(i));
+    }
 
-    tmp_log.cycle = m_num_cycles;
+    for (++i; not input->at(i).isSpace() ; i++) {
+        body_angle.append(input->at(i));
+    }
 
-    m_log_out_structure.push_back(tmp_log);
+    for (++i; not input->at(i).isSpace() ; i++) {
+        head_angle.append(input->at(i));
+    }
+
+    for (++i; input->at(i) != QChar('s')  ; i++) {}
+
+    for (i +=2; not input->at(i).isSpace() ; i++) {
+        stamina.append(input->at(i));
+    }
+
+    player plr_tmp;
+
+    plr_tmp.setPos(Vector2D(pos_x.toDouble(),pos_y.toDouble()));
+    plr_tmp.setVel(Vector2D(vel_x.toDouble(),vel_y.toDouble()));
+    plr_tmp.setBody_angle(body_angle.toDouble());
+    plr_tmp.setHead_angle(head_angle.toDouble());
+    plr_tmp.setStamina(stamina.toFloat());
+    plr_tmp.setUnum(player_unum);
+
+    tmp_log->left.push_back(plr_tmp);
 }
 
-bool Extractor::extract_right_pos(QString input, int player_unum)
-{
-    LogOutStructure tmp_log;
-    QString r_x;
-    QString r_y;
+void Extractor::extract_right(QString *input, int player_unum) {
+    LogOutStructure *tmp_log = &log_out_structure.back();
+
+    QString pos_x;
+    QString pos_y;
+
+    QString vel_x;
+    QString vel_y;
+
+    QString body_angle;
+    QString head_angle;
+
+    QString stamina;
 
     int index_r;
     QString r(QString::fromStdString("(r "));
     r.append(QString::number(player_unum));
     r.append(")");
-    index_r = input.indexOf(r);
+    index_r = input->indexOf(r);
 
     int i = skip_characters(input, index_r, 4);
 
-    for (i; not input.at(i).isSpace() ; i++) {
-        r_x.append(input.at(i));
+    for (i; not input->at(i).isSpace() ; i++) {
+        pos_x.append(input->at(i));
     }
 
-    for (++i; not input.at(i).isSpace() ; i++) {
-        r_y.append(input.at(i));
+    for (++i; not input->at(i).isSpace() ; i++) {
+        pos_y.append(input->at(i));
     }
 
-    pair <double, double> tmp;
+    for (++i; not input->at(i).isSpace() ; i++) {
+        vel_x.append(input->at(i));
+    }
 
-    tmp.first = r_x.toDouble();
-    tmp.second = r_y.toDouble();
-    tmp_log.right_pos_vec.push_back(tmp);
-    r_x.clear();
-    r_y.clear();
+    for (++i; not input->at(i).isSpace() ; i++) {
+        vel_y.append(input->at(i));
+    }
 
-    tmp_log.cycle = m_num_cycles;
+    for (++i; not input->at(i).isSpace() ; i++) {
+        body_angle.append(input->at(i));
+    }
 
-    m_log_out_structure.push_back(tmp_log);
+    for (++i; not input->at(i).isSpace() ; i++) {
+        head_angle.append(input->at(i));
+    }
+
+    for (++i; input->at(i) != QChar('s')  ; i++) {}
+
+    for (i +=2; not input->at(i).isSpace() ; i++) {
+        stamina.append(input->at(i));
+    }
+
+    player plr_tmp;
+
+    plr_tmp.setPos(Vector2D(pos_x.toDouble(),pos_y.toDouble()));
+    plr_tmp.setVel(Vector2D(vel_x.toDouble(),vel_y.toDouble()));
+    plr_tmp.setBody_angle(body_angle.toDouble());
+    plr_tmp.setHead_angle(head_angle.toDouble());
+    plr_tmp.setStamina(stamina.toFloat());
+    plr_tmp.setUnum(player_unum);
+
+    tmp_log->right.push_back(plr_tmp);
 }
 
-void Extractor::setExtract_ball_pos(bool extract_ball_pos)
-{
-    m_extract_ball_pos = extract_ball_pos;
+void Extractor::setInputString(const QString &inputString) {
+    this->inputString = inputString;
 }
 
-void Extractor::setProgressBar(QProgressBar* progressBar)
-{
-    m_progressBar = progressBar;
+void Extractor::setOutputString(const QString &outputString) {
+    this->outputString = outputString;
 }
 
-void Extractor::setInputString(const QString& inputString)
-{
-    m_inputString = inputString;
+void Extractor::setExtract_pos(bool value) {
+    extract_pos = value;
 }
 
-void Extractor::setOutputString(const QString& outputString)
-{
-    m_outputString = outputString;
+void Extractor::setExtract_vel(bool value) {
+    extract_vel = value;
 }
 
-void Extractor::setCurrent_player(int current_player)
-{
-    m_current_player = current_player;
+void Extractor::setExtract_stamina(bool value) {
+    extract_stamina = value;
 }
 
-void Extractor::findLastCycle()
-{
-    QFile inputFile(m_inputString);
+void Extractor::setExtract_angles(bool value) {
+    extract_angles = value;
+}
+
+void Extractor::setExtr_ball(bool value) {
+    extr_ball = value;
+}
+
+void Extractor::set_extract_players(bool extract_pl[22]) {
+    for (int count = 0; count < 22; count++) {
+        this->player_to_extract[count] = extract_pl[count];
+    }
+}
+
+void Extractor::findLastCycle() {
+    QFile inputFile(inputString);
 
     if (!inputFile.open(QFile::ReadOnly |
                         QFile::Text)) {
@@ -428,5 +462,5 @@ void Extractor::findLastCycle()
     }
 
 
-    m_last_cycle = current_cycle;
+    last_cycle = current_cycle;
 }

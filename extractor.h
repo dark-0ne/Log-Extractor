@@ -6,58 +6,72 @@
 #include <QProgressBar>
 
 #include <vector>
+#include "movable.h"
+#include "player.h"
 
 using namespace std;
 
 struct LogOutStructure {
     int cycle;
-    pair <double,double> ball_vec;
-    vector <pair <double,double> > left_pos_vec;
-    vector <pair <double,double> > right_pos_vec;
+    movable ball;
+    vector <player > left;
+    vector <player> right;
 };
 
-class Extractor : public QThread
-{
-public:
-    Extractor();
+class Extractor : public QThread {
+    Q_OBJECT
+
+    friend class MainWindow;
+
+  public:
+    explicit Extractor(QWidget *parent=0);
+    virtual ~Extractor();
     void run() override;
 
-    void setCurrent_player(int current_player);
-
-    void setExtract_ball_pos(bool extract_ball_pos);
-
-    void setProgressBar(QProgressBar *progressBar);
+    void set_extract_players(bool extr[22]);
 
     void setInputString(const QString &inputString);
 
     void setOutputString(const QString &outputString);
 
-signals:
-    static void extracted();
+    void setExtract_pos(bool value);
 
-private:
-    QString m_inputString;
-    QString m_outputString;
-    QProgressBar *m_progressBar;
+    void setExtract_vel(bool value);
 
-    vector <LogOutStructure> m_log_out_structure;
+    void setExtract_stamina(bool value);
 
-    int m_num_cycles;
-    int m_last_cycle;
+    void setExtract_angles(bool value);
 
-    int m_current_player;
-    bool m_extract_ball_pos;
+    void setExtr_ball(bool value);
 
-    bool write_to_file();
-    int skip_characters(QString input, int current_index, int num_skip_chars);
+  signals:
+    void signal_progress_bar(int value);
+
+  private:
+    QString inputString;        //Path to input file
+    QString outputString;       //Path to output file
+
+    vector <LogOutStructure> log_out_structure;     //Vector used to save extracted data
+
+    int last_cycle;             //Last cycle in log
+
+    bool player_to_extract[22]; //Which players to extract
+    bool extr_ball;             //Extract ball or not
+    bool extract_pos;           //Extract position
+    bool extract_vel;           //Extract velocity
+    bool extract_stamina;       //Extract player stamina
+    bool extract_angles;        //Extract player body & head(relative to body) angles
+
+    void write_to_file();
+    int skip_characters(QString *input, int current_index, int num_skip_chars);
     void findLastCycle();
 
-    bool extract_ball_pos(QString input);
-    bool extract_left_pos(QString input);
-    bool extract_right_pos(QString input);
+    void extract_ball(QString *input);
+    void extract_left(QString *input);      //Extract all required left player
+    void extract_right(QString *input);     //Extract all required right player
 
-    bool extract_left_pos(QString input,int player_unum);
-    bool extract_right_pos(QString input,int player_unum);
+    void extract_left(QString *input,int player_unum);  //Extract specific left player
+    void extract_right(QString *input,int player_unum); //Extract specific right player
 
 
 };
