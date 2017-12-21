@@ -33,8 +33,6 @@ void Extractor::run() {
 
     for (int current_cycle_count = 1; current_cycle_count <= last_cycle; current_cycle_count++) {
 
-        cout << "Starting cycle " << current_cycle_count << endl;
-
         QString show1("show ");
         QString show2("show ");
         QString str_start;

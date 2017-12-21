@@ -1,15 +1,33 @@
 #include <QFileDialog>
 #include <QFile>
 #include <QMessageBox>
+#include <QPixmap>
+#include <QIcon>
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-
+#include "configwindow.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow) {
     ui->setupUi(this);
+    QPixmap pixmap("/home/dark0ne/Documents/2DRCSS/Log-Extractor/settings.png");
+    QIcon ButtonIcon(pixmap);
+    ui->configButton->setIcon(ButtonIcon);
+    ui->configButton->setIconSize(QSize(35,35));
+    m_extractor = NULL;
+
+    extract_ball = true;
+
+    for (int i=0; i<3; i++) {
+        to_extract[i]= true;
+    }
+    to_extract[3] = false;
+
+    for (int i=0; i<22; i++) {
+        extract_player[i]= true;
+    }
 
 }
 
@@ -24,6 +42,21 @@ void MainWindow::update_progress_bar(int value) {
 void MainWindow::extract_finished() {
     m_extractor->quit();
     delete m_extractor;
+    m_extractor = NULL;
+}
+
+void MainWindow::update_config(bool pos,bool vel,bool sta, bool ang ,bool ball,std::vector<bool> players) {
+
+    to_extract[0]  = pos;
+    to_extract[1]  = vel;
+    to_extract[2]  = sta;
+    to_extract[3]  = ang;
+
+    for (int i=0; i<22; i++) {
+        extract_player[i] = players.at(i);
+    }
+
+    extract_ball = ball;
 }
 
 void MainWindow::on_inputButton_clicked() {
@@ -53,30 +86,36 @@ void MainWindow::on_extractButton_clicked() {
         return;
     }
 
-    else if (ui->progressBar->value() != 0 && ui->progressBar->value() != 100) {
-        QMessageBox msgBox(this);
-        msgBox.setText("Please wait we are currently extracting!");
-        msgBox.exec();
-        return;
-    } else {
+    else if (m_extractor==NULL) {
 
         m_extractor = new Extractor(this);
         connect(m_extractor,SIGNAL(signal_progress_bar(int)),this,SLOT(update_progress_bar(int)));
         connect(m_extractor,SIGNAL(finished()),this,SLOT(extract_finished()));
 
-        bool extract_players[22];
-        for (int count = 0; count <22; count++) {
-            extract_players[count] = true;
-        }
-        m_extractor->set_extract_players(extract_players);
-        m_extractor->setExtr_ball(ui->ballPosCheckBox->isChecked());
+        m_extractor->setExtr_ball(extract_ball);
+        m_extractor->set_extract_players(extract_player);
         m_extractor->setInputString(ui->inputText->text());
         m_extractor->setOutputString(ui->outputText->text());
-        m_extractor->setExtract_pos(true);
-        m_extractor->setExtract_vel(true);
-        m_extractor->setExtract_angles(true);
-        m_extractor->setExtract_stamina(true);
+        m_extractor->setExtract_pos(to_extract[0]);
+        m_extractor->setExtract_vel(to_extract[1]);
+        m_extractor->setExtract_stamina(to_extract[2]);
+        m_extractor->setExtract_angles(to_extract[3]);
+
 
         m_extractor->start();
+    } else {
+        QMessageBox msgBox(this);
+        msgBox.setText("Please wait we are currently extracting!");
+        msgBox.exec();
     }
+}
+
+void MainWindow::on_configButton_clicked() {
+    ConfigWindow configWindow(this);
+
+    connect(&configWindow,SIGNAL(sendConfig(bool,bool,bool,bool,bool,std::vector<bool>)),this,SLOT(update_config(bool,bool,
+            bool,
+            bool,bool,std::vector<bool>)));
+
+    configWindow.exec();
 }
