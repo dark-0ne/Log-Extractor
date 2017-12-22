@@ -31,14 +31,16 @@ QT       += core gui
                                                   vector_2d.cpp \
                                                   movable.cpp \
                                                   player.cpp \
-    configwindow.cpp
+    configwindow.cpp \
+    handler.cpp
 
                                                   HEADERS  += mainwindow.h \
                                                       extractor.h \
                                                       vector_2d.h \
                                                       movable.h \
                                                       player.h \
-    configwindow.h
+    configwindow.h \
+    handler.h
 
                                                       FORMS    += mainwindow.ui \
     configwindow.ui

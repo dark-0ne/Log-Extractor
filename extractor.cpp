@@ -3,14 +3,15 @@
 #include <QFile>
 #include <QDebug>
 #include <QMessageBox>
-#include <QXmlStreamWriter>
+#include <qtconcurrentrun.h>
+#include <QThread>
 
 #include <iostream>
 #include <vector>
 
 using namespace std;
 
-Extractor::Extractor(QWidget *parent) {
+Extractor::Extractor() {
 }
 
 Extractor::~Extractor() {
@@ -19,19 +20,9 @@ Extractor::~Extractor() {
 
 void Extractor::run() {
 
-    QFile inputFile(inputString);
+    findLastAndFirstCycles();
 
-    if (!inputFile.open(QFile::ReadOnly |
-                        QFile::Text)) {
-        qDebug() << " Could not open the file for reading";
-        return;
-    }
-
-    findLastCycle();
-    QTextStream in(&inputFile);
-    QString input = in.readAll();
-
-    for (int current_cycle_count = 1; current_cycle_count <= last_cycle; current_cycle_count++) {
+    for (int current_cycle_count = first_cycle; current_cycle_count <= last_cycle; current_cycle_count++) {
 
         QString show1("show ");
         QString show2("show ");
@@ -42,8 +33,8 @@ void Extractor::run() {
         show1.append(str_start);
         show2.append(str_end);
 
-        int index_start = input.indexOf(show1, 0);
-        int index_end = input.indexOf(show2, 0);
+        int index_start = log.indexOf(show1, 0);
+        int index_end = log.indexOf(show2, 0);
 
         if (index_start == -1 && current_cycle_count == 3000) {
             continue;
@@ -56,18 +47,18 @@ void Extractor::run() {
         if (index_end == -1) {
             if (current_cycle_count == 2999) {
                 show2 = "show 3001";
-                index_end = input.indexOf(show2);
+                index_end = log.indexOf(show2);
             } else if (current_cycle_count == 5999) {
                 show2 = "msg 6000";
-                index_end = input.indexOf(show2);
+                index_end = log.indexOf(show2);
             }
         }
 
-        QString current_cycle_log = input.mid(index_start, index_end - index_start);
+        QString current_cycle_log = log.mid(index_start, index_end - index_start);
 
-        log_out_structure.push_back(LogOutStructure());
+        log_out_structure->push_back(LogOutStructure());
 
-        log_out_structure.back().cycle = current_cycle_count;
+        log_out_structure->back().cycle = current_cycle_count;
 
         if (extr_ball) {
             extract_ball(&current_cycle_log);
@@ -76,14 +67,12 @@ void Extractor::run() {
         extract_left(&current_cycle_log);
         extract_right(&current_cycle_log);
 
-        input = input.mid(index_end);
-        emit signal_progress_bar(100 * current_cycle_count / last_cycle);
+        log = log.mid(index_end);
+        emit finished_one_cycle();
 
     }
 
-    inputFile.close();
-    write_to_file();
-    emit signal_progress_bar(100);
+    emit done();
 
 }
 
@@ -117,7 +106,7 @@ void Extractor::extract_ball(QString *input) {
         vel_y.append(input->at(i));
     }
 
-    LogOutStructure *tmp_log = &log_out_structure.back();
+    LogOutStructure *tmp_log = &log_out_structure->back();
 
     tmp_log->ball.setPos(Vector2D(pos_x.toDouble(),pos_y.toDouble()));
     tmp_log->ball.setVel(Vector2D(vel_x.toDouble(),vel_y.toDouble()));
@@ -152,115 +141,8 @@ int Extractor::skip_characters(QString *input, int current_index, int num_skip_c
     return i;
 }
 
-void Extractor::write_to_file() {
-
-    QFile outputFile(outputString);
-
-    if (!outputFile.open(QIODevice::WriteOnly)) {
-        QMessageBox msgBox;
-        msgBox.setText("Can not write to file!");
-        msgBox.exec();
-        return;
-    } else {
-
-        QXmlStreamWriter xmlWriter(&outputFile);
-        xmlWriter.setAutoFormatting(true);
-        xmlWriter.writeStartDocument();
-
-        auto cycle_it = log_out_structure.begin();
-
-        xmlWriter.writeStartElement("Data");
-        for (; cycle_it != log_out_structure.end(); cycle_it++) {
-
-            xmlWriter.writeStartElement("Cycle");
-            xmlWriter.writeAttribute("number", QString::number(cycle_it->cycle));
-
-            //write ball pos
-            if (extr_ball) {
-                xmlWriter.writeStartElement("Ball");
-
-                if (extract_pos) {
-                    xmlWriter.writeAttribute("PosX", QString::number(cycle_it->ball.getPos().x, 'f', 4));
-                    xmlWriter.writeAttribute("PosY", QString::number(cycle_it->ball.getPos().y, 'f', 4));
-                }
-
-                if (extract_vel) {
-                    xmlWriter.writeAttribute("VelX", QString::number(cycle_it->ball.getVel().x, 'f', 4));
-                    xmlWriter.writeAttribute("VelY", QString::number(cycle_it->ball.getVel().y, 'f', 4));
-                }
-
-                xmlWriter.writeEndElement();
-            }
-            //write left players
-            auto player_it = cycle_it->left.begin();
-
-            for (; player_it != cycle_it->left.end(); player_it++) {
-
-                xmlWriter.writeStartElement("Player");
-                xmlWriter.writeAttribute("Side", "Left");
-                xmlWriter.writeAttribute("Unum", QString::number(player_it->getUnum()));
-                if (extract_pos) {
-                    xmlWriter.writeAttribute("PosX", QString::number(player_it->getPos().x, 'f', 4));
-                    xmlWriter.writeAttribute("PosY", QString::number(player_it->getPos().y, 'f', 4));
-                }
-
-                if (extract_vel) {
-                    xmlWriter.writeAttribute("VelX", QString::number(player_it->getVel().x, 'f', 4));
-                    xmlWriter.writeAttribute("VelY", QString::number(player_it->getVel().y, 'f', 4));
-                }
-
-                if (extract_stamina) {
-                    xmlWriter.writeAttribute("Stamina", QString::number(player_it->getStamina(),'f',4));
-                }
-
-                if (extract_angles) {
-                    xmlWriter.writeAttribute("BodyAngle", QString::number(player_it->getBody_angle(), 'f', 4));
-                    xmlWriter.writeAttribute("HeadAngle", QString::number(player_it->getHead_angle(), 'f', 4));
-                }
-                xmlWriter.writeEndElement();
-
-            }
-
-            player_it = cycle_it->right.begin();
-
-            for (; player_it != cycle_it->right.end(); player_it++) {
-
-                xmlWriter.writeStartElement("Player");
-                xmlWriter.writeAttribute("Side", "Right");
-                xmlWriter.writeAttribute("Unum", QString::number(player_it->getUnum()));
-                if (extract_pos) {
-                    xmlWriter.writeAttribute("PosX", QString::number(player_it->getPos().x, 'f', 4));
-                    xmlWriter.writeAttribute("PosY", QString::number(player_it->getPos().y, 'f', 4));
-                }
-
-                if (extract_vel) {
-                    xmlWriter.writeAttribute("VelX", QString::number(player_it->getVel().x, 'f', 4));
-                    xmlWriter.writeAttribute("VelY", QString::number(player_it->getVel().y, 'f', 4));
-                }
-
-                if (extract_stamina) {
-                    xmlWriter.writeAttribute("Stamina", QString::number(player_it->getStamina(),'f',4));
-                }
-
-                if (extract_angles) {
-                    xmlWriter.writeAttribute("BodyAngle", QString::number(player_it->getBody_angle(), 'f', 4));
-                    xmlWriter.writeAttribute("HeadAngle", QString::number(player_it->getHead_angle(), 'f', 4));
-                }
-                xmlWriter.writeEndElement();
-
-            }
-            xmlWriter.writeEndElement();
-        }
-        xmlWriter.writeEndElement();
-        xmlWriter.writeEndDocument();
-
-    }
-
-    outputFile.close();
-}
-
 void Extractor::extract_left(QString *input, int player_unum) {
-    LogOutStructure *tmp_log = &log_out_structure.back();
+    LogOutStructure *tmp_log = &log_out_structure->back();
 
     QString pos_x;
     QString pos_y;
@@ -324,7 +206,7 @@ void Extractor::extract_left(QString *input, int player_unum) {
 }
 
 void Extractor::extract_right(QString *input, int player_unum) {
-    LogOutStructure *tmp_log = &log_out_structure.back();
+    LogOutStructure *tmp_log = &log_out_structure->back();
 
     QString pos_x;
     QString pos_y;
@@ -387,14 +269,6 @@ void Extractor::extract_right(QString *input, int player_unum) {
     tmp_log->right.push_back(plr_tmp);
 }
 
-void Extractor::setInputString(const QString &inputString) {
-    this->inputString = inputString;
-}
-
-void Extractor::setOutputString(const QString &outputString) {
-    this->outputString = outputString;
-}
-
 void Extractor::setExtract_pos(bool value) {
     extract_pos = value;
 }
@@ -415,23 +289,22 @@ void Extractor::setExtr_ball(bool value) {
     extr_ball = value;
 }
 
+void Extractor::setLog(const QString &value) {
+    log = value;
+}
+
+void Extractor::setLog_out_structure(vector<LogOutStructure> *value) {
+    log_out_structure = value;
+}
+
 void Extractor::set_extract_players(bool extract_pl[22]) {
     for (int count = 0; count < 22; count++) {
         this->player_to_extract[count] = extract_pl[count];
     }
 }
 
-void Extractor::findLastCycle() {
-    QFile inputFile(inputString);
+void Extractor::findLastAndFirstCycles() {
 
-    if (!inputFile.open(QFile::ReadOnly |
-                        QFile::Text)) {
-        qDebug() << " Could not open the file for reading!";
-        return;
-    }
-
-    QTextStream in(&inputFile);
-    QString input = in.readAll();
     int current_cycle = 3001;
     int counter = 6001;
 
@@ -442,8 +315,8 @@ void Extractor::findLastCycle() {
         show1.append(QString::number(current_cycle));
         show2.append(QString::number(current_cycle + 1));
 
-        int index_start = input.indexOf(show1, 0);
-        int index_next = input.indexOf(show2, 0);
+        int index_start = log.indexOf(show1, 0);
+        int index_next = log.indexOf(show2, 0);
 
         if (index_start != -1 && index_next == -1) {
             break;
@@ -459,6 +332,18 @@ void Extractor::findLastCycle() {
         counter--;
     }
 
+    int index = log.indexOf("show ");
 
+    for (index; not log.at(index).isSpace() ; index++) {
+
+    }
+
+    QString start_str;
+    for (++index; not log.at(index).isSpace() ; index++) {
+        start_str.append(log.at(index));
+    }
+
+    first_cycle = start_str.toInt();
     last_cycle = current_cycle;
+
 }

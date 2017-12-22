@@ -2,8 +2,7 @@
 #define EXTRACTOR_H
 
 #include <QString>
-#include <QThread>
-#include <QProgressBar>
+#include <QObject>
 
 #include <vector>
 #include "movable.h"
@@ -18,15 +17,15 @@ struct LogOutStructure {
     vector <player> right;
 };
 
-class Extractor : public QThread {
+class Extractor : public QObject {
     Q_OBJECT
 
-    friend class MainWindow;
+    friend class handler;
 
   public:
-    explicit Extractor(QWidget *parent=0);
+    explicit Extractor();
     virtual ~Extractor();
-    void run() override;
+    void run();
 
     void set_extract_players(bool extr[22]);
 
@@ -44,16 +43,22 @@ class Extractor : public QThread {
 
     void setExtr_ball(bool value);
 
+    void setLog(const QString &value);
+
+    void setLog_out_structure(vector<LogOutStructure> *value);
+
   signals:
-    void signal_progress_bar(int value);
+    void finished_one_cycle();
+    void done();
 
   private:
-    QString inputString;        //Path to input file
-    QString outputString;       //Path to output file
+//    Q_DISABLE_COPY(Extractor)
+    QString log;
 
-    vector <LogOutStructure> log_out_structure;     //Vector used to save extracted data
+    vector <LogOutStructure> *log_out_structure;     //Vector used to save extracted data
 
     int last_cycle;             //Last cycle in log
+    int first_cycle;
 
     bool player_to_extract[22]; //Which players to extract
     bool extr_ball;             //Extract ball or not
@@ -62,9 +67,8 @@ class Extractor : public QThread {
     bool extract_stamina;       //Extract player stamina
     bool extract_angles;        //Extract player body & head(relative to body) angles
 
-    void write_to_file();
     int skip_characters(QString *input, int current_index, int num_skip_chars);
-    void findLastCycle();
+    void findLastAndFirstCycles();
 
     void extract_ball(QString *input);
     void extract_left(QString *input);      //Extract all required left player

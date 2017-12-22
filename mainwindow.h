@@ -3,7 +3,7 @@
 
 #include <QMainWindow>
 
-#include "extractor.h"
+#include "handler.h"
 
 namespace Ui {
 class MainWindow;
@@ -35,7 +35,7 @@ class MainWindow : public QMainWindow {
   private:
     Ui::MainWindow *ui;
 
-    Extractor *m_extractor;
+    handler *m_handler;
 
     bool to_extract[4];
     bool extract_ball;

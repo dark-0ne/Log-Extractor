@@ -16,7 +16,7 @@ MainWindow::MainWindow(QWidget *parent) :
     QIcon ButtonIcon(pixmap);
     ui->configButton->setIcon(ButtonIcon);
     ui->configButton->setIconSize(QSize(35,35));
-    m_extractor = NULL;
+    m_handler = NULL;
 
     extract_ball = true;
 
@@ -37,12 +37,6 @@ MainWindow::~MainWindow() {
 
 void MainWindow::update_progress_bar(int value) {
     ui->progressBar->setValue(value);
-}
-
-void MainWindow::extract_finished() {
-    m_extractor->quit();
-    delete m_extractor;
-    m_extractor = NULL;
 }
 
 void MainWindow::update_config(bool pos,bool vel,bool sta, bool ang ,bool ball,std::vector<bool> players) {
@@ -86,23 +80,12 @@ void MainWindow::on_extractButton_clicked() {
         return;
     }
 
-    else if (m_extractor==NULL) {
+    else if (m_handler==NULL) {
 
-        m_extractor = new Extractor(this);
-        connect(m_extractor,SIGNAL(signal_progress_bar(int)),this,SLOT(update_progress_bar(int)));
-        connect(m_extractor,SIGNAL(finished()),this,SLOT(extract_finished()));
-
-        m_extractor->setExtr_ball(extract_ball);
-        m_extractor->set_extract_players(extract_player);
-        m_extractor->setInputString(ui->inputText->text());
-        m_extractor->setOutputString(ui->outputText->text());
-        m_extractor->setExtract_pos(to_extract[0]);
-        m_extractor->setExtract_vel(to_extract[1]);
-        m_extractor->setExtract_stamina(to_extract[2]);
-        m_extractor->setExtract_angles(to_extract[3]);
+        m_handler = new handler();
+        connect(m_handler,SIGNAL(signal_progress_bar(int)),this,SLOT(update_progress_bar(int)));
 
 
-        m_extractor->start();
     } else {
         QMessageBox msgBox(this);
         msgBox.setText("Please wait we are currently extracting!");
