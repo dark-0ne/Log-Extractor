@@ -81,8 +81,50 @@
      <x>220</x>
      <y>40</y>
      <width>171</width>
-     <height>191</height>
+     <height>161</height>
     </rect>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="toggleLeftButton">
+   <property name="geometry">
+    <rect>
+     <x>220</x>
+     <y>210</y>
+     <width>81</width>
+     <height>25</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <pointsize>10</pointsize>
+    </font>
+   </property>
+   <property name="focusPolicy">
+    <enum>Qt::StrongFocus</enum>
+   </property>
+   <property name="text">
+    <string>Toggle Left</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="toggleRightButton">
+   <property name="geometry">
+    <rect>
+     <x>308</x>
+     <y>210</y>
+     <width>81</width>
+     <height>25</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <pointsize>10</pointsize>
+    </font>
+   </property>
+   <property name="focusPolicy">
+    <enum>Qt::StrongFocus</enum>
+   </property>
+   <property name="text">
+    <string>Toggle Right</string>
    </property>
   </widget>
  </widget>

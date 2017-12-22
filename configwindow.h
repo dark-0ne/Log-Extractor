@@ -25,6 +25,10 @@ class ConfigWindow : public QDialog {
 
     void on_canselButton_clicked();
 
+    void on_toggleLeftButton_clicked();
+
+    void on_toggleRightButton_clicked();
+
   private:
     Ui::ConfigWindow *ui;
     QListWidgetItem *pos_check_box;

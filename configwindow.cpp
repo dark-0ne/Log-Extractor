@@ -90,3 +90,25 @@ void ConfigWindow::on_okButton_clicked() {
 void ConfigWindow::on_canselButton_clicked() {
     close();
 }
+
+void ConfigWindow::on_toggleLeftButton_clicked() {
+    if (player_check_boxes.at(0)->checkState() == Qt::Checked) {
+        for (int i=0; i<11; i++) {
+            player_check_boxes.at(i)->setCheckState(Qt::Unchecked);
+        }
+    } else
+        for (int i=0; i<11; i++) {
+            player_check_boxes.at(i)->setCheckState(Qt::Checked);
+        }
+}
+
+void ConfigWindow::on_toggleRightButton_clicked() {
+    if (player_check_boxes.at(11)->checkState() == Qt::Checked) {
+        for (int i=11; i<22; i++) {
+            player_check_boxes.at(i)->setCheckState(Qt::Unchecked);
+        }
+    } else
+        for (int i=11; i<22; i++) {
+            player_check_boxes.at(i)->setCheckState(Qt::Checked);
+        }
+}
