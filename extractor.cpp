@@ -31,6 +31,8 @@ void Extractor::run() {
     QTextStream in(&inputFile);
     QString input = in.readAll();
 
+    extract_team_names_resutls(input);
+
     for (int current_cycle_count = 1; current_cycle_count <= last_cycle; current_cycle_count++) {
 
         QString show1("show ");
@@ -98,7 +100,7 @@ void Extractor::extract_ball(QString *input) {
     QString vel_x;
     QString vel_y;
 
-    int i = skip_characters(input, index_ball_data, 1);
+    int i = skip_words(input, index_ball_data, 1);
 
     for (i ; not input->at(i).isSpace() ; i++) {
         pos_x.append(input->at(i));
@@ -141,7 +143,7 @@ void Extractor::extract_right(QString *input) {
     }
 }
 
-int Extractor::skip_characters(QString *input, int current_index, int num_skip_chars) {
+int Extractor::skip_words(QString *input, int current_index, int num_skip_chars) {
     int i;
 
     for (i = current_index; num_skip_chars > 0 ; i++)
@@ -170,10 +172,25 @@ void Extractor::write_to_file() {
         auto cycle_it = log_out_structure.begin();
 
         xmlWriter.writeStartElement("Data");
+
+        xmlWriter.writeStartElement("Team");
+        xmlWriter.writeAttribute("Side","Left");
+        xmlWriter.writeAttribute("Name",left_team_name);
+        xmlWriter.writeAttribute("Goals",left_score);
+        xmlWriter.writeEndElement();
+
+        xmlWriter.writeStartElement("Team");
+        xmlWriter.writeAttribute("Side","Right");
+        xmlWriter.writeAttribute("Name",right_team_name);
+        xmlWriter.writeAttribute("Goals",right_score);
+        xmlWriter.writeEndElement();
+
+
+
         for (; cycle_it != log_out_structure.end(); cycle_it++) {
 
             xmlWriter.writeStartElement("Cycle");
-            xmlWriter.writeAttribute("number", QString::number(cycle_it->cycle));
+            xmlWriter.writeAttribute("Number",QString::number(cycle_it->cycle));
 
             //write ball pos
             if (extr_ball) {
@@ -279,7 +296,7 @@ void Extractor::extract_left(QString *input, int player_unum) {
     l.append(")");
     index_l = input->indexOf(l);
 
-    int i = skip_characters(input, index_l, 4);
+    int i = skip_words(input, index_l, 4);
 
     for (i; not input->at(i).isSpace() ; i++) {
         pos_x.append(input->at(i));
@@ -343,7 +360,7 @@ void Extractor::extract_right(QString *input, int player_unum) {
     r.append(")");
     index_r = input->indexOf(r);
 
-    int i = skip_characters(input, index_r, 4);
+    int i = skip_words(input, index_r, 4);
 
     for (i; not input->at(i).isSpace() ; i++) {
         pos_x.append(input->at(i));
@@ -461,4 +478,28 @@ void Extractor::findLastCycle() {
 
 
     last_cycle = current_cycle;
+}
+
+void Extractor::extract_team_names_resutls(QString &inputString) {
+    int index_start = inputString.lastIndexOf("(team ");
+
+    index_start = skip_words(&inputString,index_start,2);
+
+    for (index_start; not inputString.at(index_start).isSpace() ; index_start++) {
+        left_team_name.append(inputString.at(index_start));
+    }
+
+    for (++index_start; not inputString.at(index_start).isSpace() ; index_start++) {
+        right_team_name.append(inputString.at(index_start));
+    }
+
+    for (++index_start; not inputString.at(index_start).isSpace() ; index_start++) {
+        left_score.append(inputString.at(index_start));
+    }
+
+    for (++index_start; (not inputString.at(index_start).isSpace())&&
+            inputString.at(index_start) != ')' ; index_start++) {
+        right_score.append(inputString.at(index_start));
+    }
+
 }

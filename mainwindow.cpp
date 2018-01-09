@@ -3,6 +3,7 @@
 #include <QMessageBox>
 #include <QPixmap>
 #include <QIcon>
+#include <QCloseEvent>
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
@@ -118,4 +119,16 @@ void MainWindow::on_configButton_clicked() {
             bool,bool,std::vector<bool>)));
 
     configWindow.exec();
+}
+
+void MainWindow::closeEvent(QCloseEvent *event) {
+    QMessageBox::StandardButton resBtn = QMessageBox::question(this, "Log Extractor",
+                                         tr("Are you sure?\n"),
+                                         QMessageBox::No | QMessageBox::Yes,
+                                         QMessageBox::Yes);
+    if (resBtn != QMessageBox::Yes) {
+        event->ignore();
+    } else {
+        event->accept();
+    }
 }

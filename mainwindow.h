@@ -41,6 +41,8 @@ class MainWindow : public QMainWindow {
     bool extract_ball;
     bool extract_player[22];
 
+    void closeEvent(QCloseEvent *event) override;
+
 };
 
 #endif // MAINWINDOW_H

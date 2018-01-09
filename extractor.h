@@ -53,6 +53,12 @@ class Extractor : public QThread {
 
     vector <LogOutStructure> log_out_structure;     //Vector used to save extracted data
 
+    QString left_team_name;
+    QString right_team_name;
+
+    QString left_score;
+    QString right_score;
+
     int last_cycle;             //Last cycle in log
 
     bool player_to_extract[22]; //Which players to extract
@@ -63,8 +69,10 @@ class Extractor : public QThread {
     bool extract_angles;        //Extract player body & head(relative to body) angles
 
     void write_to_file();
-    int skip_characters(QString *input, int current_index, int num_skip_chars);
+    int skip_words(QString *input, int current_index, int num_skip_chars);
     void findLastCycle();
+
+    void extract_team_names_resutls(QString &inputString);
 
     void extract_ball(QString *input);
     void extract_left(QString *input);      //Extract all required left player
