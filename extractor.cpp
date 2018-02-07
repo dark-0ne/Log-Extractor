@@ -119,10 +119,12 @@ void Extractor::extract_ball(QString *input) {
         vel_y.append(input->at(i));
     }
 
+    vel_y.chop(1);
     LogOutStructure *tmp_log = &log_out_structure.back();
 
     tmp_log->ball.setPos(Vector2D(pos_x.toDouble(),pos_y.toDouble()));
     tmp_log->ball.setVel(Vector2D(vel_x.toDouble(),vel_y.toDouble()));
+
 }
 
 
