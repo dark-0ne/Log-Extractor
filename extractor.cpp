@@ -29,7 +29,9 @@ void Extractor::run() {
 
     findLastCycle();
     QTextStream in(&inputFile);
-    QString input = in.readAll();
+    QString inp = in.readAll();
+
+    QString input = inp;
 
     extract_team_names_resutls(input);
 
@@ -80,6 +82,65 @@ void Extractor::run() {
 
         input = input.mid(index_end);
         emit signal_progress_bar(100 * current_cycle_count / last_cycle);
+
+    }
+    input = inp;
+    QString search_str("show 10");
+    int index_start = input.indexOf(search_str, 0);
+    input = input.mid(index_start);
+
+    for (int count = left_score.toInt(); count > 0; count--) {
+        search_str = "goal_l";
+        index_start = input.indexOf(search_str,0);
+        index_start -=2;
+
+        QString score_cycle;
+
+        for (index_start ; not input.at(index_start).isSpace() ; index_start--) {
+            score_cycle.append(input.at(index_start));
+        }
+
+        QString reverse_score;
+        for (int i=score_cycle.size()-1; i>=0; i--) {
+            reverse_score.append(score_cycle.at(i));
+        }
+
+        GoalStructure tmp;
+        tmp.cycle = reverse_score.toInt();
+        tmp.side = 1;
+
+        goals.push_back(tmp);
+
+        input = input.mid(index_start+20);
+    }
+
+    input = inp;
+    search_str = "show 10";
+    index_start = input.indexOf(search_str, 0);
+    input = input.mid(index_start);
+
+    for (int count = right_score.toInt(); count > 0; count--) {
+        search_str = "goal_r";
+        index_start = input.indexOf(search_str,0);
+        index_start -=2;
+
+        QString score_cycle;
+
+        for (index_start ; not input.at(index_start).isSpace() ; index_start--) {
+            score_cycle.append(input.at(index_start));
+        }
+
+        QString reverse_score;
+        for (int i=score_cycle.size()-1; i>=0; i--) {
+            reverse_score.append(score_cycle.at(i));
+        }
+
+        GoalStructure tmp;
+        tmp.cycle = reverse_score.toInt();
+        tmp.side = -1;
+
+        goals.push_back(tmp);
+        input = input.mid(index_start+20);
 
     }
 
@@ -178,13 +239,25 @@ void Extractor::write_to_file() {
         xmlWriter.writeStartElement("Team");
         xmlWriter.writeAttribute("Side","Left");
         xmlWriter.writeAttribute("Name",left_team_name);
-        xmlWriter.writeAttribute("Goals",left_score);
+        xmlWriter.writeAttribute("Score",left_score);
+        auto it = goals.begin();
+        for (; it != goals.end(); it++) {
+            if (it->side == 1) {
+                xmlWriter.writeTextElement("Goal",QString::number(it->cycle));
+            }
+        }
         xmlWriter.writeEndElement();
 
         xmlWriter.writeStartElement("Team");
         xmlWriter.writeAttribute("Side","Right");
         xmlWriter.writeAttribute("Name",right_team_name);
-        xmlWriter.writeAttribute("Goals",right_score);
+        xmlWriter.writeAttribute("Score",right_score);
+        it = goals.begin();
+        for (; it != goals.end(); it++) {
+            if (it->side == -1) {
+                xmlWriter.writeTextElement("Goal",QString::number(it->cycle));
+            }
+        }
         xmlWriter.writeEndElement();
 
 

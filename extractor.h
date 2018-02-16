@@ -18,6 +18,11 @@ struct LogOutStructure {
     vector <player> right;
 };
 
+struct GoalStructure {
+    int cycle;
+    int side;       //Left 1, Right -1
+};
+
 class Extractor : public QThread {
     Q_OBJECT
 
@@ -52,6 +57,7 @@ class Extractor : public QThread {
     QString outputString;       //Path to output file
 
     vector <LogOutStructure> log_out_structure;     //Vector used to save extracted data
+    vector <GoalStructure> goals;
 
     QString left_team_name;
     QString right_team_name;
